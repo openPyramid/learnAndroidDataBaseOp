@@ -16,4 +16,26 @@
 
 package com.example.android.trackmysleepquality.database
 
-interface SleepDatabaseDao
+import androidx.lifecycle.LiveData
+import androidx.room.*
+
+@Dao
+interface SleepDatabaseDao {
+    @Insert
+    fun insert(night: SleepNight)  // 当调用此函数时，SleepNight的一行数据就会插入到数据库中去。
+
+    @Update
+    fun update(night: SleepNight)
+
+    @Query("SELECT * from daily_sleep_quality_table WHERE nightId = :key") // key为下面的形参
+    fun get(key: Long): SleepNight
+
+    @Query("DELETE FROM daily_sleep_quality_table")
+    fun clear()
+
+    @Query("SELECT * FROM daily_sleep_quality_table ORDER BY nightId DESC")
+    fun getAllNights(): LiveData<List<SleepNight>>
+
+    @Query("SELECT * FROM daily_sleep_quality_table ORDER BY nightId DESC LIMIT 1")
+    fun getTonight(): SleepNight?
+}
