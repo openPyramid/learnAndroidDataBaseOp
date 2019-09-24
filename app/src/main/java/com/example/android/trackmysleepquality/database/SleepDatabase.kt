@@ -15,3 +15,38 @@
  */
 
 package com.example.android.trackmysleepquality.database
+
+import android.content.Context
+import android.os.strictmode.InstanceCountViolation
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+
+@Database(entities = [SleepNight::class], version = 1, exportSchema = false) // 如果有多个表，把表对应的类都填到中括号里就行
+abstract class SleepDatabase : RoomDatabase() {
+    abstract val sleepDatabaseDao: SleepDatabaseDao
+    companion object {
+        @Volatile
+        private var INSTANCE: SleepDatabase? = null
+
+        fun getInstance(context: Context) : SleepDatabase {
+            synchronized(this) {
+                var instance = INSTANCE
+
+                if(instance == null) {
+                    instance = Room.databaseBuilder(
+                            context.applicationContext,
+                            SleepDatabase::class.java,
+                            "sleep_history_database"
+                    )
+                            .fallbackToDestructiveMigration()
+                            .build()
+                    INSTANCE = instance
+                }
+
+                return instance
+            }
+        }
+    }
+
+}
