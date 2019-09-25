@@ -18,7 +18,10 @@ package com.example.android.trackmysleepquality.sleeptracker
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.MutableLiveData
 import com.example.android.trackmysleepquality.database.SleepDatabaseDao
+import com.example.android.trackmysleepquality.database.SleepNight
+import kotlinx.coroutines.*
 
 /**
  * ViewModel for SleepTrackerFragment.
@@ -26,5 +29,92 @@ import com.example.android.trackmysleepquality.database.SleepDatabaseDao
 class SleepTrackerViewModel(
         val database: SleepDatabaseDao,
         application: Application) : AndroidViewModel(application) {
+
+    private var viewModeJob = Job()
+
+    override fun onCleared() {
+        super.onCleared()
+        viewModeJob.cancel()
+    }
+
+    private val uiScope = CoroutineScope(Dispatchers.Main + viewModeJob)
+    private var tonight = MutableLiveData<SleepNight?>()
+    private val nights = database.getAllNights()
+
+    init {
+        initializeTonight()
+    }
+
+    private fun initializeTonight() {
+        uiScope.launch {
+            tonight.value = getTonightFromDatabase()
+        }
+    }
+
+    private suspend fun getTonightFromDatabase(): SleepNight? {
+        return withContext(Dispatchers.IO) { // 这使得任务运行在另一个coroutin，实现了慢应用不会阻塞主线程
+            var night = database.getTonight()
+            if(night?.endTimeMilli != night?.startTimeMilli) {
+                night = null
+            }
+            night
+        }
+    }
+
+    fun onStartTracking() {
+        uiScope.launch {
+            val newNight = SleepNight()
+            insert(newNight)
+            tonight.value = getTonightFromDatabase()
+        }
+    }
+
+    private suspend fun insert(night: SleepNight) {
+        withContext(Dispatchers.IO) {
+            database.insert(night)
+        }
+    }
+
+//    // 一般套路如下
+//    // 首先建立uiScope
+//    fun someWorkNeedsToBeDoneSlowly() {
+//        uiScope.launch {
+//            suspendFunction()
+//        }
+//    }
+//    // 然后定义新的Coroutine来完成慢操作
+//    private suspend fun suspendFunction() {
+//        withContext(Dispatchers.IO) {
+//            longRunningWork() // 比如数据库操作
+//        }
+//    }
+
+    fun onStopTracking() {
+        uiScope.launch {
+            val oldNight = tonight.value ?: return@launch
+            oldNight.endTimeMilli = System.currentTimeMillis()
+            updata(oldNight)
+        }
+    }
+
+    private suspend fun updata(night: SleepNight) {
+        withContext(Dispatchers.IO) {
+            database.update(night)
+        }
+    }
+
+    fun onClear() {
+        uiScope.launch {
+            clear()
+            tonight.value = null
+        }
+    }
+
+    suspend fun clear() {
+        withContext(Dispatchers.IO) {
+            database.clear()
+        }
+    }
+
 }
 
