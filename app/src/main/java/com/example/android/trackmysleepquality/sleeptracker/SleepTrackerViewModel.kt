@@ -34,13 +34,13 @@ class SleepTrackerViewModel(
         application: Application) : AndroidViewModel(application) {
 
     private var viewModeJob = Job()
+    private val uiScope = CoroutineScope(Dispatchers.Main + viewModeJob)
 
     override fun onCleared() {
         super.onCleared()
         viewModeJob.cancel()
     }
 
-    private val uiScope = CoroutineScope(Dispatchers.Main + viewModeJob)
     private var tonight = MutableLiveData<SleepNight?>()
     private val nights = database.getAllNights()
     val nightsSting = Transformations.map(nights) { nights ->
@@ -64,7 +64,7 @@ class SleepTrackerViewModel(
         _showSnackbarEvent.value = false
     }
 
-    private var _navigateToSleepQuality = MutableLiveData<SleepNight>()
+    private val _navigateToSleepQuality = MutableLiveData<SleepNight>()
     val navigateToSleepQuality : LiveData<SleepNight>
         get() = _navigateToSleepQuality
 
